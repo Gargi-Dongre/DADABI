@@ -1,0 +1,12 @@
+{
+	"name": "AzureDataLakeStorage_LS",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Access of storage account ",
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://damg7370gargi.dfs.core.windows.net/"
+		}
+	}
+}
