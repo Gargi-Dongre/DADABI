@@ -86,6 +86,22 @@
 				"typeProperties": {
 					"source": {
 						"type": "ParquetSource",
+						"additionalColumns": [
+							{
+								"name": "DI_JOB_ID",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							{
+								"name": "DI_LOAD_DT",
+								"value": {
+									"value": "@utcNow()",
+									"type": "Expression"
+								}
+							}
+						],
 						"storeSettings": {
 							"type": "AzureBlobFSReadSettings",
 							"recursive": true,
@@ -93,6 +109,13 @@
 						},
 						"formatSettings": {
 							"type": "ParquetReadSettings"
+						}
+					},
+					"sink": {
+						"type": "SnowflakeV2Sink",
+						"preCopyScript": "DELETE FROM MYSCHEMA.PET_LICENSE_STAGE",
+						"importSettings": {
+							"type": "SnowflakeImportCopyCommand"
 						}
 					},
 					"enableStaging": false
@@ -107,6 +130,12 @@
 								"type": "Expression"
 							}
 						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
 					}
 				]
 			}
