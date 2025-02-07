@@ -1,0 +1,9 @@
+{
+	"name": "damg7370adfgargi",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "acc959f0-7091-4218-a9c3-b0565c72f4c7",
+		"tenantId": "a8eec281-aaa3-4dae-ac9b-9a398b9215e7"
+	}
+}
