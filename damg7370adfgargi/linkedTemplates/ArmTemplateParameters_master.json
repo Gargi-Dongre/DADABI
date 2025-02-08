@@ -23,6 +23,9 @@
 		"AzureBlobStorage_LS_sasUri": {
 			"value": ""
 		},
+		"AzureBlobStorage1_LS_sasUri": {
+			"value": ""
+		},
 		"containerUri": {
 			"value": ""
 		},
