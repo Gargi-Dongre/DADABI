@@ -7,7 +7,8 @@
 		},
 		"parameters": {
 			"FileName": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "NYPD_Arrest_Data__Year_to_Date__20250213.tsv"
 			}
 		},
 		"annotations": [],
@@ -15,13 +16,13 @@
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
-				"folderPath": {
+				"fileName": {
 					"value": "@dataset().FileName",
 					"type": "Expression"
 				},
 				"fileSystem": "bronze"
 			},
-			"columnDelimiter": ",",
+			"columnDelimiter": "\t",
 			"escapeChar": "\\",
 			"firstRowAsHeader": true,
 			"quoteChar": "\""
