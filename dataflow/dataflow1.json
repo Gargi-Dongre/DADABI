@@ -1,0 +1,50 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_bronze",
+						"type": "DatasetReference"
+					},
+					"name": "SourceBronze"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          ARREST_KEY as integer,",
+				"          ARREST_DATE as date 'MM/dd/yyyy',",
+				"          PD_CD as integer,",
+				"          PD_DESC as string,",
+				"          KY_CD as short,",
+				"          OFNS_DESC as string,",
+				"          LAW_CODE as string,",
+				"          LAW_CAT_CD as string,",
+				"          ARREST_BORO as string,",
+				"          ARREST_PRECINCT as short,",
+				"          JURISDICTION_CODE as short,",
+				"          AGE_GROUP as string,",
+				"          PERP_SEX as string,",
+				"          PERP_RACE as string,",
+				"          X_COORD_CD as integer,",
+				"          Y_COORD_CD as integer,",
+				"          Latitude as double,",
+				"          Longitude as double,",
+				"          {New Georeferenced Column} as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> SourceBronze",
+				"SourceBronze derive(PD_CD = iifNull(isNull(PD_CD), toShort(0) , PD_CD)) ~> derivedColumn1"
+			]
+		}
+	}
+}
