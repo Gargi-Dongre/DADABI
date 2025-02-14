@@ -16,9 +16,15 @@
 			"transformations": [
 				{
 					"name": "derivedColumn1"
+				},
+				{
+					"name": "select1"
 				}
 			],
 			"scriptLines": [
+				"parameters{",
+				"     JobID as string (\"10\")",
+				"}",
 				"source(output(",
 				"          ARREST_KEY as integer,",
 				"          ARREST_DATE as date 'MM/dd/yyyy',",
@@ -43,7 +49,41 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     ignoreNoFilesFound: false) ~> SourceBronze",
-				"SourceBronze derive(PD_CD = iifNull(isNull(PD_CD), toShort(0) , PD_CD)) ~> derivedColumn1"
+				"SourceBronze derive(PD_CD = coalesce(PD_CD, toInteger(0)),",
+				"          PD_DESC = iif(PD_DESC == '(null)', 'Unknown', PD_DESC),",
+				"          KY_CD = coalesce(KY_CD, toInteger(0)),",
+				"          OFNS_DESC = iif(OFNS_DESC == '(null)', 'Unknown', OFNS_DESC),",
+				"          LAW_CODE = iif(LAW_CODE == '(null)', 'Unknown', LAW_CODE),",
+				"          LAW_CAT_CD = iif(isNull(LAW_CAT_CD) || replace(LAW_CAT_CD, ' ', '') == '(null)', 'Unknown', ",
+				"    iif(LAW_CAT_CD == 'F' ||  LAW_CAT_CD == 'M' || LAW_CAT_CD == 'V',LAW_CAT_CD , 'Invalid'))",
+				",",
+				"          DI_JOB_ID = $JobID,",
+				"          DI_Load_DT = currentDate()) ~> derivedColumn1",
+				"derivedColumn1 select(mapColumn(",
+				"          ARREST_KEY,",
+				"          ARREST_DATE,",
+				"          PD_CD,",
+				"          PD_DESC,",
+				"          KY_CD,",
+				"          OFNS_DESC,",
+				"          LAW_CODE,",
+				"          LAW_CAT_CD,",
+				"          ARREST_BORO,",
+				"          ARREST_PRECINCT,",
+				"          JURISDICTION_CODE,",
+				"          AGE_GROUP,",
+				"          PERP_SEX,",
+				"          PERP_RACE,",
+				"          X_COORD_CD,",
+				"          Y_COORD_CD,",
+				"          Latitude,",
+				"          Longitude,",
+				"          {New Georeferenced Column},",
+				"          DI_JOB_ID,",
+				"          DI_Load_DT",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> select1"
 			]
 		}
 	}
