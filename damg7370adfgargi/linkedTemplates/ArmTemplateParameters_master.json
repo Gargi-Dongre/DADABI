@@ -8,6 +8,12 @@
 		"Snowflake_LS_password": {
 			"value": ""
 		},
+		"AzureBlobStorage1_LS_sasUri": {
+			"value": ""
+		},
+		"AzureBlobStorage_LS_sasUri": {
+			"value": ""
+		},
 		"AzureDataLakeStorage_LS_properties_typeProperties_url": {
 			"value": "https://damg7370gargi.dfs.core.windows.net/"
 		},
@@ -19,12 +25,6 @@
 		},
 		"Snowflake_LS_properties_typeProperties_role": {
 			"value": "DevRole"
-		},
-		"AzureBlobStorage_LS_sasUri": {
-			"value": ""
-		},
-		"AzureBlobStorage1_LS_sasUri": {
-			"value": ""
 		},
 		"containerUri": {
 			"value": ""
