@@ -115,7 +115,7 @@
 				"          X_COORD_CD,",
 				"          Y_COORD_CD,",
 				"          DI_JOB_ID,",
-				"          DI_Load_DT",
+				"          DI_LOAD_DT = DI_Load_DT",
 				"     )) ~> SnowflakeSink"
 			]
 		}
