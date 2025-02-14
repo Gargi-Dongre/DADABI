@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "tsv_to_Parquet",
+				"name": "tsv_to_Snowflake",
 				"type": "ExecuteDataFlow",
 				"dependsOn": [],
 				"policy": {
