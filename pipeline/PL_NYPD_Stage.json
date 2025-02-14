@@ -16,7 +16,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"dataflow": {
-						"referenceName": "dataflow1",
+						"referenceName": "NYPDCleansing",
 						"type": "DataFlowReference",
 						"parameters": {
 							"JobID": {
@@ -31,11 +31,7 @@
 						}
 					},
 					"staging": {
-						"linkedService": {
-							"referenceName": "AzureBlobStorage1_LS",
-							"type": "LinkedServiceReference"
-						},
-						"folderPath": "staging"
+						"folderPath": ""
 					},
 					"compute": {
 						"coreCount": 8,
