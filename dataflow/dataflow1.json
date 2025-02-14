@@ -12,13 +12,21 @@
 					"name": "SourceBronze"
 				}
 			],
-			"sinks": [],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DS_Snowflake",
+						"type": "DatasetReference"
+					},
+					"name": "SnowflakeSink"
+				}
+			],
 			"transformations": [
 				{
-					"name": "derivedColumn1"
+					"name": "derivedColumns"
 				},
 				{
-					"name": "select1"
+					"name": "select"
 				}
 			],
 			"scriptLines": [
@@ -58,8 +66,8 @@
 				"    iif(LAW_CAT_CD == 'F' ||  LAW_CAT_CD == 'M' || LAW_CAT_CD == 'V',LAW_CAT_CD , 'Invalid'))",
 				",",
 				"          DI_JOB_ID = $JobID,",
-				"          DI_Load_DT = currentDate()) ~> derivedColumn1",
-				"derivedColumn1 select(mapColumn(",
+				"          DI_Load_DT = currentDate()) ~> derivedColumns",
+				"derivedColumns select(mapColumn(",
 				"          ARREST_KEY,",
 				"          ARREST_DATE,",
 				"          PD_CD,",
@@ -76,14 +84,21 @@
 				"          PERP_RACE,",
 				"          X_COORD_CD,",
 				"          Y_COORD_CD,",
-				"          Latitude,",
-				"          Longitude,",
-				"          {New Georeferenced Column},",
 				"          DI_JOB_ID,",
 				"          DI_Load_DT",
 				"     ),",
 				"     skipDuplicateMapInputs: false,",
-				"     skipDuplicateMapOutputs: false) ~> select1"
+				"     skipDuplicateMapOutputs: false) ~> select",
+				"select sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true) ~> SnowflakeSink"
 			]
 		}
 	}
