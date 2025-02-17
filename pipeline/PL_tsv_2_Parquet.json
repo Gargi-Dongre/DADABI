@@ -142,7 +142,11 @@
 				"outputs": [
 					{
 						"referenceName": "SnowflakeTable1",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"SchemaName": "MYSCHEMA",
+							"TableName": "PET_LICENSE_STAGE"
+						}
 					}
 				]
 			}
