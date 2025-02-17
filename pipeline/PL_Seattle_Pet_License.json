@@ -1,0 +1,44 @@
+{
+	"name": "PL_Seattle_Pet_License",
+	"properties": {
+		"activities": [
+			{
+				"name": "StageDataFlow",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "SeattlePetCleaning",
+						"type": "DataFlowReference",
+						"parameters": {
+							"JobID": {
+								"value": "'@{pipeline().RunId}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"sinkSnowflake": {
+								"SchemaName": "MYSCHEMA",
+								"TableName": "PET_LICENSE_STAGE"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"annotations": []
+	}
+}
