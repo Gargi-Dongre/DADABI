@@ -1,0 +1,91 @@
+{
+	"name": "SeattlePetCleaning",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText1",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sinkSnowflake"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "selectColumns"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     JobID as string (\"10\")",
+				"}",
+				"source(output(",
+				"          License_Issue_Date as string,",
+				"          License_Number as string,",
+				"          Animals_Name as string,",
+				"          Species as string,",
+				"          Primary_Breed as string,",
+				"          Secondary_Breed as string,",
+				"          ZIP_Code as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(LIC_ISSUE_DATE = toDate(License_Issue_Date, 'MMMM dd yyyy'),",
+				"          Secondary_Breed = iifNull(Secondary_Breed,'Unknown'),",
+				"          Animals_Name = translate(Animals_Name, '() []', ''),",
+				"          License_Number = toInteger(translate(License_Number, 'S', '')),",
+				"          DI_JOB_ID = $JobID,",
+				"          Load_Dt = currentDate()) ~> derivedColumn1",
+				"derivedColumn1 select(mapColumn(",
+				"          License_Issue_Date,",
+				"          License_Number,",
+				"          Animals_Name,",
+				"          Species,",
+				"          Primary_Breed,",
+				"          Secondary_Breed,",
+				"          ZIP_Code,",
+				"          LIC_ISSUE_DATE,",
+				"          DI_JOB_ID,",
+				"          Load_Dt",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> selectColumns",
+				"selectColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          License_Issue_Date,",
+				"          License_Number,",
+				"          Animals_Name,",
+				"          Species,",
+				"          Primary_Breed,",
+				"          Secondary_Breed,",
+				"          ZIP_Code,",
+				"          LIC_ISSUE_DATE,",
+				"          DI_JOB_ID,",
+				"          Load_Dt",
+				"     )) ~> sinkSnowflake"
+			]
+		}
+	}
+}
