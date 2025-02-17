@@ -19,7 +19,11 @@
 					"name": "BreedDimMaxID"
 				},
 				{
-					"name": "sourceBreedDim"
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sourceBreedDIM"
 				}
 			],
 			"sinks": [],
@@ -29,6 +33,9 @@
 				},
 				{
 					"name": "aggregateBreedKeys"
+				},
+				{
+					"name": "joinToTarget"
 				}
 			],
 			"scriptLines": [
@@ -53,8 +60,17 @@
 				"     validateSchema: false,",
 				"     query: 'SELECT NVL(MAX(BREED_SK),0) AS MAXBreedSK FROM MYSCHEMA.BREED_DIM',",
 				"     format: 'query') ~> BreedDimMaxID",
-				"source(allowSchemaDrift: true,",
-				"     validateSchema: false) ~> sourceBreedDim",
+				"source(output(",
+				"          BREED_SK as decimal(10,0),",
+				"          PRIMARY_BREED as string,",
+				"          SECONDARY_BREED as string,",
+				"          SPECIES_NAME as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_JOB_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceBreedDIM",
 				"sourceStage, BreedDimMaxID join(1 == 1,",
 				"     joinType:'cross',",
 				"     matchType:'exact',",
@@ -63,7 +79,15 @@
 				"sourceWithSK aggregate(groupBy(SPECIES,",
 				"          PRIMARY_BREED,",
 				"          SECONDARY_BREED,",
-				"          MAXBREEDSK)) ~> aggregateBreedKeys"
+				"          MAXBREEDSK),",
+				"     COUNT_ROW = count(LICENSE_NUMBER)) ~> aggregateBreedKeys",
+				"aggregateBreedKeys, sourceBreedDIM join(SPECIES == SPECIES_NAME",
+				"     && aggregateBreedKeys@PRIMARY_BREED == sourceBreedDIM@PRIMARY_BREED",
+				"     && aggregateBreedKeys@SECONDARY_BREED == sourceBreedDIM@SECONDARY_BREED,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinToTarget"
 			]
 		}
 	}
