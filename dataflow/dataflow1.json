@@ -37,6 +37,12 @@
 			"transformations": [
 				{
 					"name": "joinStageBreedDim"
+				},
+				{
+					"name": "joinLocDim"
+				},
+				{
+					"name": "joinDateDim"
 				}
 			],
 			"scriptLines": [
@@ -99,7 +105,17 @@
 				"     joinType:'inner',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
-				"     broadcast: 'auto')~> joinStageBreedDim"
+				"     broadcast: 'auto')~> joinStageBreedDim",
+				"joinStageBreedDim, sourceLocationDim join(ZIP_CODE == ZIP,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinLocDim",
+				"joinLocDim, sourceDateDim join(LICENSE_ISSUE_DATE == ERROR_FUNCTION(''),",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinDateDim"
 			]
 		}
 	}
