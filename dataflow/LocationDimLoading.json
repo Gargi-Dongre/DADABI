@@ -61,7 +61,7 @@
 				"          STATE = state_abbr,",
 				"          ZIP = zipcode,",
 				"          CITY = city,",
-				"          SK_ID,",
+				"          LOCATION_SK = SK_ID,",
 				"          DI_JOB_ID,",
 				"          DI_JOB_DATE",
 				"     )) ~> sinkLocDIM"
