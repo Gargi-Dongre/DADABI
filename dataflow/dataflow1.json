@@ -34,7 +34,11 @@
 				}
 			],
 			"sinks": [],
-			"transformations": [],
+			"transformations": [
+				{
+					"name": "joinStageBreedDim"
+				}
+			],
 			"scriptLines": [
 				"source(output(",
 				"          LICENSE_ISSUE_DATE as date,",
@@ -72,9 +76,30 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> sourceLocationDim",
-				"source(allowSchemaDrift: true,",
+				"source(output(",
+				"          DT as date,",
+				"          ABRV_DAY_NAME as string,",
+				"          MONTH_NAME as string,",
+				"          START_DAY_OF_MONTH as date,",
+				"          END_DAY_OF_MONTH as date,",
+				"          QUATER_NUM as decimal(2,0),",
+				"          DAY_OF_WEEK as decimal(2,0),",
+				"          IS_WEEKEND as decimal(1,0),",
+				"          YEAR_NUM as decimal(4,0),",
+				"          MONTH_NUM as decimal(2,0),",
+				"          DAY_NUM as decimal(2,0),",
+				"          DATE_DIM_SK as decimal(10,0)",
+				"     ),",
+				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
-				"     format: 'table') ~> sourceDateDim"
+				"     format: 'table') ~> sourceDateDim",
+				"sourceStage, sourceBreedDim join(SPECIES == SPECIES_NAME",
+				"     && sourceStage@PRIMARY_BREED == sourceBreedDim@PRIMARY_BREED",
+				"     && sourceStage@SECONDARY_BREED == sourceBreedDim@SECONDARY_BREED,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinStageBreedDim"
 			]
 		}
 	}
