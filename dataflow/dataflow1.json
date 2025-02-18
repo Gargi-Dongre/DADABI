@@ -111,7 +111,7 @@
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinLocDim",
-				"joinLocDim, sourceDateDim join(LICENSE_ISSUE_DATE == ERROR_FUNCTION(''),",
+				"joinLocDim, sourceDateDim join(LICENSE_ISSUE_DATE == DT,",
 				"     joinType:'inner',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
