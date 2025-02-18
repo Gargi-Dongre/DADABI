@@ -26,7 +26,15 @@
 					"name": "sourceBreedDIM"
 				}
 			],
-			"sinks": [],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sinkSnowflake"
+				}
+			],
 			"transformations": [
 				{
 					"name": "sourceWithSK"
@@ -51,6 +59,9 @@
 				}
 			],
 			"scriptLines": [
+				"parameters{",
+				"     JobID as string (\"10\")",
+				"}",
 				"source(output(",
 				"          LICENSE_ISSUE_DATE as date,",
 				"          LICENSE_NUMBER as string,",
@@ -119,7 +130,27 @@
 				"     ),",
 				"     skipDuplicateMapInputs: false,",
 				"     skipDuplicateMapOutputs: false) ~> select1",
-				"SurrogateKey derive(BREED_SK = ERROR_FUNCTION('')) ~> derivedColumn"
+				"SurrogateKey derive(BREED_SK = MAXBREEDSK + RowNumber,",
+				"          DI_JOB_ID = currentTimestamp(),",
+				"          DI_JOB_DATE = $JobID) ~> derivedColumn",
+				"derivedColumn sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          BREED_SK,",
+				"          PRIMARY_BREED = PRIMARY_BREED_NAME,",
+				"          SECONDARY_BREED = SECONDARY_BREED_NAME,",
+				"          SPECIES_NAME,",
+				"          DI_JOB_ID,",
+				"          DI_JOB_DATE",
+				"     )) ~> sinkSnowflake"
 			]
 		}
 	}
