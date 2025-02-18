@@ -40,7 +40,15 @@
 					"name": "sourceFactMaxID"
 				}
 			],
-			"sinks": [],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
 			"transformations": [
 				{
 					"name": "joinStageBreedDim"
@@ -56,9 +64,18 @@
 				},
 				{
 					"name": "join1"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "select1"
 				}
 			],
 			"scriptLines": [
+				"parameters{",
+				"     JobID as string (\"10\")",
+				"}",
 				"source(output(",
 				"          LICENSE_ISSUE_DATE as date,",
 				"          LICENSE_NUMBER as string,",
@@ -136,14 +153,43 @@
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinDateDim",
-				"join1 keyGenerate(output(fact_sk as long),",
+				"select1 keyGenerate(output(fact_sk as long),",
 				"     startAt: 1L,",
 				"     stepValue: 1L) ~> surrogateKey",
 				"joinDateDim, sourceFactMaxID join(1 == 1,",
 				"     joinType:'cross',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
-				"     broadcast: 'auto')~> join1"
+				"     broadcast: 'auto')~> join1",
+				"surrogateKey derive(PET_LICENSE_SK = PET_LIC_SK + fact_sk,",
+				"          DI_JOB_ID = $JobID,",
+				"          DI_JOB_DATE = currentTimestamp()) ~> derivedColumn1",
+				"join1 select(mapColumn(",
+				"          BREED_SK,",
+				"          LOCATION_SK,",
+				"          DATE_DIM_SK,",
+				"          PET_LIC_SK",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> select1",
+				"derivedColumn1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          BREED_SK,",
+				"          LOCATION_SK,",
+				"          DATE_DIM_SK,",
+				"          PET_LIC_SK,",
+				"          fact_sk,",
+				"          PET_LICENSE_SK,",
+				"          DI_JOB_ID,",
+				"          DI_JOB_DATE",
+				"     )) ~> sink1"
 			]
 		}
 	}
