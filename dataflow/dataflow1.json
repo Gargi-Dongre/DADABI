@@ -144,7 +144,7 @@
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinStageBreedDim",
 				"joinStageBreedDim, sourceLocationDim join(ZIP_CODE == ZIP,",
-				"     joinType:'left',",
+				"     joinType:'inner',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinLocDim",
