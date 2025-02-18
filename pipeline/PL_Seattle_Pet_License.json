@@ -37,6 +37,61 @@
 					},
 					"traceLevel": "Fine"
 				}
+			},
+			{
+				"name": "LoadBreedDIM",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "StageDataFlow",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "BreedDimLoading",
+						"type": "DataFlowReference",
+						"parameters": {
+							"JobID": {
+								"value": "'@{pipeline().RunId}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"sourceStage": {
+								"SchemaName": "MYSCHEMA",
+								"TableName": "PET_LICENSE_STAGE"
+							},
+							"BreedDimMaxID": {
+								"SchemaName": "MYSCHEMA",
+								"TableName": "BREED_DIM"
+							},
+							"sourceBreedDIM": {
+								"SchemaName": "MYSCHEMA",
+								"TableName": "BREED_DIM"
+							},
+							"sinkSnowflake": {
+								"SchemaName": "MYSCHEMA",
+								"TableName": "BREED_DIM"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
 			}
 		],
 		"annotations": []
