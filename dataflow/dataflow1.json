@@ -184,8 +184,6 @@
 				"          BREED_SK,",
 				"          LOCATION_SK,",
 				"          DATE_DIM_SK,",
-				"          PET_LIC_SK,",
-				"          fact_sk,",
 				"          PET_LICENSE_SK,",
 				"          DI_JOB_ID,",
 				"          DI_JOB_DATE",
