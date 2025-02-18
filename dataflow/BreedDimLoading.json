@@ -144,12 +144,12 @@
 				"     skipDuplicateMapOutputs: true,",
 				"     stageInsert: true,",
 				"     mapColumn(",
+				"          SPECIES,",
 				"          PRIMARY_BREED,",
 				"          SECONDARY_BREED,",
 				"          BREED_SK,",
-				"          SPECIES_NAME,",
-				"          DI_JOB_ID = DI_JOB_DATE,",
-				"          DI_JOB_DATE = DI_JOB_ID",
+				"          DI_JOB_ID,",
+				"          DI_JOB_DATE",
 				"     )) ~> sinkSnowflake"
 			]
 		}
