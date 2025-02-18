@@ -131,8 +131,8 @@
 				"     skipDuplicateMapInputs: false,",
 				"     skipDuplicateMapOutputs: false) ~> select1",
 				"SurrogateKey derive(BREED_SK = MAXBREEDSK + RowNumber,",
-				"          DI_JOB_ID = currentTimestamp(),",
-				"          DI_JOB_DATE = $JobID) ~> derivedColumn",
+				"          DI_JOB_DATE = currentTimestamp(),",
+				"          DI_JOB_ID = $JobID) ~> derivedColumn",
 				"derivedColumn sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     deletable:false,",
@@ -148,8 +148,8 @@
 				"          SECONDARY_BREED,",
 				"          BREED_SK,",
 				"          SPECIES_NAME,",
-				"          DI_JOB_ID,",
-				"          DI_JOB_DATE",
+				"          DI_JOB_ID = DI_JOB_DATE,",
+				"          DI_JOB_DATE = DI_JOB_ID",
 				"     )) ~> sinkSnowflake"
 			]
 		}
