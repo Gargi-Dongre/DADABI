@@ -45,6 +45,9 @@
 				},
 				{
 					"name": "select1"
+				},
+				{
+					"name": "derivedColumn"
 				}
 			],
 			"scriptLines": [
@@ -103,19 +106,20 @@
 				"     stepValue: 1L) ~> SurrogateKey",
 				"filterExistingRows select(mapColumn(",
 				"          SPECIES,",
-				"          PRIMARY_BREED_NAME = aggregateBreedKeys@PRIMARY_BREED,",
-				"          SECONDARY_BREED_NAME = aggregateBreedKeys@SECONDARY_BREED,",
+				"          PRIMARY_BREED = aggregateBreedKeys@PRIMARY_BREED,",
+				"          SECONDARY_BREED = aggregateBreedKeys@SECONDARY_BREED,",
 				"          MAXBREEDSK,",
 				"          COUNT_ROW,",
 				"          BREED_SK,",
-				"          PRIMARY_BREED = sourceBreedDIM@PRIMARY_BREED,",
-				"          SECONDARY_BREED = sourceBreedDIM@SECONDARY_BREED,",
+				"          PRIMARY_BREED_NAME = sourceBreedDIM@PRIMARY_BREED,",
+				"          SECONDARY_BREED_NAME = sourceBreedDIM@SECONDARY_BREED,",
 				"          SPECIES_NAME,",
 				"          DI_JOB_ID,",
 				"          DI_JOB_DATE",
 				"     ),",
 				"     skipDuplicateMapInputs: false,",
-				"     skipDuplicateMapOutputs: false) ~> select1"
+				"     skipDuplicateMapOutputs: false) ~> select1",
+				"SurrogateKey derive(BREED_SK = ERROR_FUNCTION('')) ~> derivedColumn"
 			]
 		}
 	}
