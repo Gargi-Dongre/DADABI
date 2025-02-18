@@ -183,7 +183,7 @@
 				"     mapColumn(",
 				"          BREED_SK,",
 				"          LOCATION_SK,",
-				"          DATE_DIM = DATE_DIM_SK,",
+				"          DATE_SK = DATE_DIM_SK,",
 				"          PET_LICENSE_SK,",
 				"          DI_JOB_ID,",
 				"          DI_JOB_DATE",
