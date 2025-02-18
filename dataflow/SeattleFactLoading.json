@@ -1,5 +1,5 @@
 {
-	"name": "dataflow1",
+	"name": "SeattleFactLoading",
 	"properties": {
 		"type": "MappingDataFlow",
 		"typeProperties": {
@@ -139,17 +139,17 @@
 				"sourceStage, sourceBreedDim join(SPECIES == SPECIES_NAME",
 				"     && sourceStage@PRIMARY_BREED == sourceBreedDim@PRIMARY_BREED",
 				"     && sourceStage@SECONDARY_BREED == sourceBreedDim@SECONDARY_BREED,",
-				"     joinType:'inner',",
+				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinStageBreedDim",
 				"joinStageBreedDim, sourceLocationDim join(ZIP_CODE == ZIP,",
-				"     joinType:'inner',",
+				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinLocDim",
 				"joinLocDim, sourceDateDim join(LICENSE_ISSUE_DATE == DT,",
-				"     joinType:'inner',",
+				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinDateDim",
