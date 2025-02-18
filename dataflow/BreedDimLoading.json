@@ -24,9 +24,6 @@
 						"type": "DatasetReference"
 					},
 					"name": "sourceBreedDIM"
-				},
-				{
-					"name": "source1"
 				}
 			],
 			"sinks": [
@@ -97,8 +94,6 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> sourceBreedDIM",
-				"source(allowSchemaDrift: true,",
-				"     validateSchema: false) ~> source1",
 				"sourceStage, BreedDimMaxID join(1 == 1,",
 				"     joinType:'cross',",
 				"     matchType:'exact',",
