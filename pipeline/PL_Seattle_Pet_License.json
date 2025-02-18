@@ -163,7 +163,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"dataflow": {
-						"referenceName": "dataflow1",
+						"referenceName": "SeattleFactLoading",
 						"type": "DataFlowReference",
 						"parameters": {
 							"JobID": {
