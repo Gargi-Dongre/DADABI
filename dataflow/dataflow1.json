@@ -1,0 +1,81 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sourceStage"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sourceBreedDim"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sourceLocationDim"
+				},
+				{
+					"dataset": {
+						"referenceName": "SnowflakeTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sourceDateDim"
+				}
+			],
+			"sinks": [],
+			"transformations": [],
+			"scriptLines": [
+				"source(output(",
+				"          LICENSE_ISSUE_DATE as date,",
+				"          LICENSE_NUMBER as string,",
+				"          ANIMAL_NAME as string,",
+				"          SPECIES as string,",
+				"          PRIMARY_BREED as string,",
+				"          SECONDARY_BREED as string,",
+				"          ZIP_CODE as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_LOAD_DT as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceStage",
+				"source(output(",
+				"          BREED_SK as decimal(10,0),",
+				"          PRIMARY_BREED as string,",
+				"          SECONDARY_BREED as string,",
+				"          SPECIES_NAME as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_JOB_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceBreedDim",
+				"source(output(",
+				"          LOCATION_SK as decimal(10,0),",
+				"          ZIP as string,",
+				"          CITY as string,",
+				"          STATE as string,",
+				"          DI_JOB_ID as string,",
+				"          DI_JOB_DATE as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceLocationDim",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceDateDim"
+			]
+		}
+	}
+}
