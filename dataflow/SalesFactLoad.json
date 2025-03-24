@@ -39,6 +39,12 @@
 				},
 				{
 					"name": "filterPending"
+				},
+				{
+					"name": "joinDim"
+				},
+				{
+					"name": "split1"
 				}
 			],
 			"scriptLines": [
@@ -95,7 +101,14 @@
 				"     ),",
 				"     skipDuplicateMapInputs: false,",
 				"     skipDuplicateMapOutputs: false) ~> selectRequiredColumns",
-				"sourceParked filter(ERROR_FUNCTION('RETRY_FLAG = __SINGLE_QUOTE__PENDING__SINGLE_QUOTE____NEW_LINE_N__')) ~> filterPending"
+				"sourceParked filter(ERROR_FUNCTION('RETRY_FLAG = __SINGLE_QUOTE__PENDING__SINGLE_QUOTE____NEW_LINE_N__')) ~> filterPending",
+				"selectRequiredColumns, sourceDim join(CUSTOMERID == CUSTOMER_ID,",
+				"     joinType:'outer',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinDim",
+				"joinDim split(ERROR_FUNCTION('isNull(CUSTOMER_ID) = false()__NEW_LINE_N__'),",
+				"     disjoint: false) ~> split1@(Valid, )"
 			]
 		}
 	}
