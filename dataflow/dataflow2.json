@@ -9,7 +9,7 @@
 						"referenceName": "Snowflake_DS2",
 						"type": "DatasetReference"
 					},
-					"name": "source1"
+					"name": "sourceSFstage"
 				}
 			],
 			"sinks": [],
@@ -22,7 +22,7 @@
 				"     ),",
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
-				"     format: 'table') ~> source1"
+				"     format: 'table') ~> sourceSFstage"
 			]
 		}
 	}
