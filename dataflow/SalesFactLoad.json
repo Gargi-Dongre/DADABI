@@ -24,9 +24,24 @@
 						"type": "DatasetReference"
 					},
 					"name": "sourceParked"
+				},
+				{
+					"dataset": {
+						"referenceName": "Snowflake_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "sourceMaxFactSK"
 				}
 			],
-			"sinks": [],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "Snowflake_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "sinkSF"
+				}
+			],
 			"transformations": [
 				{
 					"name": "union"
@@ -45,9 +60,27 @@
 				},
 				{
 					"name": "splitValid"
+				},
+				{
+					"name": "joinMaxSK"
+				},
+				{
+					"name": "derivedColumns"
+				},
+				{
+					"name": "surrogateKey"
+				},
+				{
+					"name": "lookupDuplicates"
+				},
+				{
+					"name": "split1"
 				}
 			],
 			"scriptLines": [
+				"parameters{",
+				"     PID as string ('20')",
+				"}",
 				"source(output(",
 				"          INVOICEID as decimal(38,0),",
 				"          CUSTOMERID as decimal(38,0),",
@@ -89,6 +122,13 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> sourceParked",
+				"source(output(",
+				"          MAXINVOICE_SK as decimal(38,0)",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     query: 'SELECT NVL(MAX(INVOICE_SK),0) AS MaxINVOICE_sk FROM FCT_INVOICE',",
+				"     format: 'query') ~> sourceMaxFactSK",
 				"derivedColumn, filterPending union(byName: true)~> union",
 				"sourceSFstage derive(RETRY_FLAG = \"NEW\") ~> derivedColumn",
 				"union select(mapColumn(",
@@ -101,18 +141,50 @@
 				"     ),",
 				"     skipDuplicateMapInputs: false,",
 				"     skipDuplicateMapOutputs: false) ~> selectRequiredColumns",
-				"sourceParked filter(not(isNull(RETRY_FLAG))&& RETRY_FLAG == 'PENDING'",
-				"",
-				") ~> filterPending",
+				"sourceParked filter(not(isNull(RETRY_FLAG))&& RETRY_FLAG == 'PENDING') ~> filterPending",
 				"selectRequiredColumns, sourceDim join(CUSTOMERID == CUSTOMER_ID,",
 				"     joinType:'outer',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> joinDim",
-				"joinDim split(not(isNull(CUSTOMER_ID))",
-				"",
-				",",
-				"     disjoint: false) ~> splitValid@(Valid, Invalid)"
+				"joinDim split(not(isNull(CUSTOMER_ID)),",
+				"     disjoint: true) ~> splitValid@(Valid, Invalid)",
+				"splitValid@Valid, sourceMaxFactSK join(1==1,",
+				"     joinType:'cross',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinMaxSK",
+				"surrogateKey derive(INVOICE_SK = MAXINVOICE_SK + Row_number,",
+				"          DI_CREATEDDT = currentTimestamp(),",
+				"          PID = $PID) ~> derivedColumns",
+				"joinMaxSK keyGenerate(output(Row_number as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey",
+				"splitValid@Invalid, filterPending lookup(splitValid@Invalid@INVOICEID == sourceParked@INVOICEID",
+				"     && splitValid@Invalid@CUSTOMERID == sourceParked@CUSTOMERID,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> lookupDuplicates",
+				"lookupDuplicates split(ERROR_FUNCTION(''),",
+				"     disjoint: false) ~> split1@(, )",
+				"derivedColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          INVOICE_ID = INVOICEID,",
+				"          CUSTOMER_ID = CUSTOMERID,",
+				"          INVOICE_DT = INVOICEDATE,",
+				"          TOTAL_PRODUCT_CNT,",
+				"          TOTAL_PRODUCT_COST = TOTAL,",
+				"          DI_CREATEDDT,",
+				"          PID,",
+				"          INVOICE_SK",
+				"     )) ~> sinkSF"
 			]
 		}
 	}
