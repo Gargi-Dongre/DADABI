@@ -20,7 +20,7 @@
 						"type": "DataFlowReference",
 						"parameters": {
 							"PID": {
-								"value": "'@{pipeline().RunId}'",
+								"value": "'@{substring(pipeline().RunId,0,10)}'",
 								"type": "Expression"
 							}
 						},
@@ -75,7 +75,7 @@
 						"type": "DataFlowReference",
 						"parameters": {
 							"PID": {
-								"value": "'@{pipeline().RunId}'",
+								"value": "'@{substring(pipeline().RunId,0,10)}'",
 								"type": "Expression"
 							}
 						},
