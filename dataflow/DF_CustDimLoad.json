@@ -1,5 +1,5 @@
 {
-	"name": "dataflow2",
+	"name": "DF_CustDimLoad",
 	"properties": {
 		"type": "MappingDataFlow",
 		"typeProperties": {
@@ -10,11 +10,55 @@
 						"type": "DatasetReference"
 					},
 					"name": "sourceSFstage"
+				},
+				{
+					"dataset": {
+						"referenceName": "Snowflake_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "CustDimMAXID"
+				},
+				{
+					"dataset": {
+						"referenceName": "Snowflake_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "sourceDimCust"
 				}
 			],
-			"sinks": [],
-			"transformations": [],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "Snowflake_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "sinkSF"
+				}
+			],
+			"transformations": [
+				{
+					"name": "CrossJoin"
+				},
+				{
+					"name": "aggregate"
+				},
+				{
+					"name": "joinToTarget"
+				},
+				{
+					"name": "filterRows"
+				},
+				{
+					"name": "surrogateKey"
+				},
+				{
+					"name": "derivedColumns"
+				}
+			],
 			"scriptLines": [
+				"parameters{",
+				"     PID as string (\"10\")",
+				"}",
 				"source(output(",
 				"          CUSTOMERID as decimal(38,0),",
 				"          CUSTOMERNAME as string,",
@@ -22,7 +66,62 @@
 				"     ),",
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
-				"     format: 'table') ~> sourceSFstage"
+				"     format: 'table') ~> sourceSFstage",
+				"source(output(",
+				"          MAXCUSTOMERSK as decimal(38,0)",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     query: 'SELECT NVL(MAX(CUSTOMER_SK),0) AS MAXCustomerSK FROM MYSCHEMA.DIM_CUSTOMER',",
+				"     format: 'query') ~> CustDimMAXID",
+				"source(output(",
+				"          CUSTOMER_SK as decimal(38,0),",
+				"          CUSTOMER_ID as decimal(38,0),",
+				"          CUSTOMER_NAME as string,",
+				"          DI_CREATEDDT as timestamp,",
+				"          PID as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> sourceDimCust",
+				"sourceSFstage, CustDimMAXID join(1 == 1,",
+				"     joinType:'cross',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> CrossJoin",
+				"CrossJoin aggregate(groupBy(CUSTOMERNAME,",
+				"          BILLTO,",
+				"          CUSTOMERID,",
+				"          MAXCUSTOMERSK),",
+				"     COUNT_ROW = count(CUSTOMERID)) ~> aggregate",
+				"aggregate, sourceDimCust join(CUSTOMERNAME == CUSTOMER_NAME",
+				"     && CUSTOMERID == CUSTOMER_ID,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinToTarget",
+				"joinToTarget filter(isNull(CUSTOMER_ID)&&isNull(CUSTOMER_NAME)) ~> filterRows",
+				"filterRows keyGenerate(output(Row_number as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey",
+				"surrogateKey derive(CUSTOMER_SK = MAXCUSTOMERSK + Row_number,",
+				"          DI_CREATEDDT = currentTimestamp(),",
+				"          PID = $PID) ~> derivedColumns",
+				"derivedColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          CUSTOMER_NAME = CUSTOMERNAME,",
+				"          CUSTOMER_ID = CUSTOMERID,",
+				"          CUSTOMER_SK,",
+				"          DI_CREATEDDT,",
+				"          PID",
+				"     )) ~> sinkSF"
 			]
 		}
 	}
