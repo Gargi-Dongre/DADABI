@@ -40,6 +40,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "sinkSF"
+				},
+				{
+					"dataset": {
+						"referenceName": "Snowflake_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "sinkParked"
 				}
 			],
 			"transformations": [
@@ -71,10 +78,10 @@
 					"name": "surrogateKey"
 				},
 				{
-					"name": "lookupDuplicates"
+					"name": "exists"
 				},
 				{
-					"name": "split1"
+					"name": "Pending"
 				}
 			],
 			"scriptLines": [
@@ -110,11 +117,6 @@
 				"          INVOICEID as decimal(38,0),",
 				"          CUSTOMERID as decimal(38,0),",
 				"          INVOICEDATE as date,",
-				"          SHIPTO as string,",
-				"          SHIPTO_CITY as string,",
-				"          SHIPTO_COUNTRY as string,",
-				"          SALESPERSONPERSONID as decimal(38,0),",
-				"          SALESPERSONNAME as string,",
 				"          TOTAL_PRODUCT_CNT as decimal(38,0),",
 				"          TOTAL as double,",
 				"          RETRY_FLAG as string",
@@ -160,13 +162,11 @@
 				"joinMaxSK keyGenerate(output(Row_number as long),",
 				"     startAt: 1L,",
 				"     stepValue: 1L) ~> surrogateKey",
-				"splitValid@Invalid, filterPending lookup(splitValid@Invalid@INVOICEID == sourceParked@INVOICEID",
+				"splitValid@Invalid, sourceParked exists(splitValid@Invalid@INVOICEID == sourceParked@INVOICEID",
 				"     && splitValid@Invalid@CUSTOMERID == sourceParked@CUSTOMERID,",
-				"     multiple: false,",
-				"     pickup: 'any',",
-				"     broadcast: 'auto')~> lookupDuplicates",
-				"lookupDuplicates split(ERROR_FUNCTION('@equals(length(activity(__SINGLE_QUOTE__LookupDuplicates__SINGLE_QUOTE__).output.value), 0)__NEW_LINE_N____NEW_LINE_N__'),",
-				"     disjoint: false) ~> split1@(, )",
+				"     negate:true,",
+				"     broadcast: 'auto')~> exists",
+				"exists derive(RETRY_FLAG = 'PENDING') ~> Pending",
 				"derivedColumns sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     deletable:false,",
@@ -184,7 +184,23 @@
 				"          DI_CREATEDDT,",
 				"          PID,",
 				"          INVOICE_SK",
-				"     )) ~> sinkSF"
+				"     )) ~> sinkSF",
+				"Pending sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          INVOICEID,",
+				"          CUSTOMERID,",
+				"          INVOICEDATE,",
+				"          TOTAL_PRODUCT_CNT,",
+				"          TOTAL,",
+				"          RETRY_FLAG",
+				"     )) ~> sinkParked"
 			]
 		}
 	}
