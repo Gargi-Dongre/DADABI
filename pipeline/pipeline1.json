@@ -1,0 +1,152 @@
+{
+	"name": "pipeline1",
+	"properties": {
+		"activities": [
+			{
+				"name": "DimLoad",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "DF_CustDimLoad",
+						"type": "DataFlowReference",
+						"parameters": {
+							"PID": {
+								"value": "'@{pipeline().RunId}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"sourceSFstage": {
+								"TableName": "CUSTOMER_DATA_PART1_STAGE",
+								"SchemaName": "MYSCHEMA"
+							},
+							"CustDimMAXID": {
+								"TableName": "DIM_CUSTOMER",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sourceDimCust": {
+								"TableName": "DIM_CUSTOMER",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sinkSF": {
+								"TableName": "DIM_CUSTOMER",
+								"SchemaName": "MYSCHEMA"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "FactLoad",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "DimLoad",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "SalesFactLoad",
+						"type": "DataFlowReference",
+						"parameters": {
+							"PID": {
+								"value": "'@{pipeline().RunId}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"sourceSFstage": {
+								"TableName": "SALES_DATA_STAGE",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sourceDim": {
+								"TableName": "DIM_CUSTOMER",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sourceParked": {
+								"TableName": "SALES_DATA_PARKED",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sourceMaxFactSK": {
+								"TableName": "FCT_INVOICE",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sinkSF": {
+								"TableName": "FCT_INVOICE",
+								"SchemaName": "MYSCHEMA"
+							},
+							"sinkParked": {
+								"TableName": "SALES_DATA_PARKED",
+								"SchemaName": "MYSCHEMA"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "ChangeToCompleted",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "FactLoad",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "Snowflake_LS_2",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "UPDATE SALES_DATA_PARKED AS fp\nSET RETRY_FLAG = 'COMPLETED'\nFROM (\n    SELECT invoiceid, customerid, MAX(DI_CREATEDDT) AS max_createddt\n    FROM fact_invoice\n    GROUP BY invoiceid, customerid\n) f\nWHERE fp.invoiceid = f.invoiceid\nAND fp.customerid = f.customerid\nAND fp.retry_flag = 'PENDING'\nAND f.max_createddt <= (SELECT MAX(DI_CREATEDDT) FROM fact_invoice);\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"annotations": []
+	}
+}
