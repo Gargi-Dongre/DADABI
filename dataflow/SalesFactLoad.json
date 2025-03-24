@@ -165,7 +165,7 @@
 				"     multiple: false,",
 				"     pickup: 'any',",
 				"     broadcast: 'auto')~> lookupDuplicates",
-				"lookupDuplicates split(ERROR_FUNCTION(''),",
+				"lookupDuplicates split(ERROR_FUNCTION('@equals(length(activity(__SINGLE_QUOTE__LookupDuplicates__SINGLE_QUOTE__).output.value), 0)__NEW_LINE_N____NEW_LINE_N__'),",
 				"     disjoint: false) ~> split1@(, )",
 				"derivedColumns sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
