@@ -33,6 +33,12 @@
 				},
 				{
 					"name": "derivedColumn"
+				},
+				{
+					"name": "selectRequiredColumns"
+				},
+				{
+					"name": "filterPending"
 				}
 			],
 			"scriptLines": [
@@ -77,8 +83,19 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> sourceParked",
-				"derivedColumn, sourceParked union(byName: true)~> union",
-				"sourceSFstage derive(retry_flag = \"NEW\") ~> derivedColumn"
+				"derivedColumn, filterPending union(byName: true)~> union",
+				"sourceSFstage derive(RETRY_FLAG = \"NEW\") ~> derivedColumn",
+				"union select(mapColumn(",
+				"          INVOICEID,",
+				"          CUSTOMERID,",
+				"          INVOICEDATE,",
+				"          TOTAL_PRODUCT_CNT,",
+				"          TOTAL,",
+				"          RETRY_FLAG",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> selectRequiredColumns",
+				"sourceParked filter(ERROR_FUNCTION('RETRY_FLAG = __SINGLE_QUOTE__PENDING__SINGLE_QUOTE____NEW_LINE_N__')) ~> filterPending"
 			]
 		}
 	}
