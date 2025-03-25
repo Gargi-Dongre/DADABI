@@ -11,6 +11,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'password' of 'Snowflake_LS'"
 		},
+		"Snowflake_LS_2_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'Snowflake_LS_2'"
+		},
 		"AzureBlobStorage1_LS_sasUri": {
 			"type": "secureString",
 			"metadata": "Secure string for 'sasUri' of 'AzureBlobStorage1_LS'"
@@ -34,6 +38,14 @@
 		"Snowflake_LS_properties_typeProperties_role": {
 			"type": "string",
 			"defaultValue": "DevRole"
+		},
+		"Snowflake_LS_2_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "MySnowflakeDB"
+		},
+		"Snowflake_LS_2_properties_typeProperties_role": {
+			"type": "string",
+			"defaultValue": "DEV_ROLE"
 		}
 	},
 	"variables": {
@@ -112,6 +124,28 @@
 					"password": {
 						"type": "SecureString",
 						"value": "[parameters('Snowflake_LS_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Snowflake_LS_2')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SnowflakeV2",
+				"typeProperties": {
+					"authenticationType": "Basic",
+					"accountIdentifier": "ol26732.canada-central.azure",
+					"user": "Gargi",
+					"database": "[parameters('Snowflake_LS_2_properties_typeProperties_database')]",
+					"warehouse": "MyWarehouse",
+					"role": "[parameters('Snowflake_LS_2_properties_typeProperties_role')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('Snowflake_LS_2_password')]"
 					}
 				}
 			},
@@ -322,6 +356,41 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/Snowflake_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Snowflake_DS2')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Snowflake_LS_2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"TableName": {
+						"type": "string"
+					},
+					"SchemaName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "SnowflakeV2Table",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SchemaName",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Snowflake_LS_2')]"
 			]
 		},
 		{
@@ -661,6 +730,139 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DF_CustDimLoad')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sourceSFstage"
+						},
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "CustDimMAXID"
+						},
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sourceDimCust"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sinkSF"
+						}
+					],
+					"transformations": [
+						{
+							"name": "CrossJoin"
+						},
+						{
+							"name": "aggregate"
+						},
+						{
+							"name": "joinToTarget"
+						},
+						{
+							"name": "filterRows"
+						},
+						{
+							"name": "surrogateKey"
+						},
+						{
+							"name": "derivedColumns"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     PID as string (\"10\")",
+						"}",
+						"source(output(",
+						"          CUSTOMERID as decimal(38,0),",
+						"          CUSTOMERNAME as string,",
+						"          BILLTO as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> sourceSFstage",
+						"source(output(",
+						"          MAXCUSTOMERSK as decimal(38,0)",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     query: 'SELECT NVL(MAX(CUSTOMER_SK),0) AS MAXCustomerSK FROM MYSCHEMA.DIM_CUSTOMER',",
+						"     format: 'query') ~> CustDimMAXID",
+						"source(output(",
+						"          CUSTOMER_SK as decimal(38,0),",
+						"          CUSTOMER_ID as decimal(38,0),",
+						"          CUSTOMER_NAME as string,",
+						"          DI_CREATEDDT as timestamp,",
+						"          PID as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> sourceDimCust",
+						"sourceSFstage, CustDimMAXID join(1 == 1,",
+						"     joinType:'cross',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> CrossJoin",
+						"CrossJoin aggregate(groupBy(CUSTOMERNAME,",
+						"          BILLTO,",
+						"          CUSTOMERID,",
+						"          MAXCUSTOMERSK),",
+						"     COUNT_ROW = count(CUSTOMERID)) ~> aggregate",
+						"aggregate, sourceDimCust join(CUSTOMERNAME == CUSTOMER_NAME",
+						"     && CUSTOMERID == CUSTOMER_ID,",
+						"     joinType:'left',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> joinToTarget",
+						"joinToTarget filter(isNull(CUSTOMER_ID)&&isNull(CUSTOMER_NAME)) ~> filterRows",
+						"filterRows keyGenerate(output(Row_number as long),",
+						"     startAt: 1L,",
+						"     stepValue: 1L) ~> surrogateKey",
+						"surrogateKey derive(CUSTOMER_SK = MAXCUSTOMERSK + Row_number,",
+						"          DI_CREATEDDT = currentTimestamp(),",
+						"          PID = $PID) ~> derivedColumns",
+						"derivedColumns sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     stageInsert: true,",
+						"     mapColumn(",
+						"          CUSTOMER_NAME = CUSTOMERNAME,",
+						"          CUSTOMER_ID = CUSTOMERID,",
+						"          CUSTOMER_SK,",
+						"          DI_CREATEDDT,",
+						"          PID",
+						"     )) ~> sinkSF"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Snowflake_DS2')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/LocationDimLoading')]",
 			"type": "Microsoft.DataFactory/factories/dataflows",
 			"apiVersion": "2018-06-01",
@@ -867,7 +1069,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/SeattlePetCleaning')]",
+			"name": "[concat(parameters('factoryName'), '/SalesFactLoad')]",
 			"type": "Microsoft.DataFactory/factories/dataflows",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -876,65 +1078,168 @@
 					"sources": [
 						{
 							"dataset": {
-								"referenceName": "DelimitedText1",
+								"referenceName": "Snowflake_DS2",
 								"type": "DatasetReference"
 							},
-							"name": "source1"
+							"name": "sourceSFstage"
+						},
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sourceDim"
+						},
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sourceParked"
+						},
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sourceMaxFactSK"
 						}
 					],
 					"sinks": [
 						{
 							"dataset": {
-								"referenceName": "SnowflakeTable1",
+								"referenceName": "Snowflake_DS2",
 								"type": "DatasetReference"
 							},
-							"name": "sinkSnowflake"
+							"name": "sinkSF"
+						},
+						{
+							"dataset": {
+								"referenceName": "Snowflake_DS2",
+								"type": "DatasetReference"
+							},
+							"name": "sinkParked"
 						}
 					],
 					"transformations": [
 						{
-							"name": "derivedColumn1"
+							"name": "union"
 						},
 						{
-							"name": "selectColumns"
+							"name": "derivedColumn"
+						},
+						{
+							"name": "selectRequiredColumns"
+						},
+						{
+							"name": "filterPending"
+						},
+						{
+							"name": "joinDim"
+						},
+						{
+							"name": "splitValid"
+						},
+						{
+							"name": "joinMaxSK"
+						},
+						{
+							"name": "derivedColumns"
+						},
+						{
+							"name": "surrogateKey"
+						},
+						{
+							"name": "exists"
+						},
+						{
+							"name": "Pending"
 						}
 					],
 					"scriptLines": [
 						"parameters{",
-						"     JobID as string (\"10\")",
+						"     PID as string ('20')",
 						"}",
 						"source(output(",
-						"          License_Issue_Date as string,",
-						"          License_Number as string,",
-						"          Animals_Name as string,",
-						"          Species as string,",
-						"          Primary_Breed as string,",
-						"          Secondary_Breed as string,",
-						"          ZIP_Code as integer",
+						"          INVOICEID as decimal(38,0),",
+						"          CUSTOMERID as decimal(38,0),",
+						"          INVOICEDATE as date,",
+						"          SHIPTO as string,",
+						"          SHIPTO_CITY as string,",
+						"          SHIPTO_COUNTRY as string,",
+						"          SALESPERSONPERSONID as decimal(38,0),",
+						"          SALESPERSONNAME as string,",
+						"          TOTAL_PRODUCT_CNT as decimal(38,0),",
+						"          TOTAL as double",
 						"     ),",
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
-						"     ignoreNoFilesFound: false) ~> source1",
-						"source1 derive(LIC_ISSUE_DATE = toDate(License_Issue_Date, 'MMMM dd yyyy'),",
-						"          Secondary_Breed = iifNull(Secondary_Breed,'Unknown'),",
-						"          Animals_Name = translate(Animals_Name, '() []', ''),",
-						"          License_Number = toInteger(translate(License_Number, 'S', '')),",
-						"          DI_JOB_ID = $JobID,",
-						"          Load_Dt = currentDate()) ~> derivedColumn1",
-						"derivedColumn1 select(mapColumn(",
-						"          LICENSE_NUMBER = License_Number,",
-						"          ANIMAL_NAME = Animals_Name,",
-						"          SPECIES = Species,",
-						"          PRIMARY_BREED = Primary_Breed,",
-						"          SECONDARY_BREED = Secondary_Breed,",
-						"          ZIP_CODE = ZIP_Code,",
-						"          LICENSE_ISSUE_DATE = LIC_ISSUE_DATE,",
-						"          DI_JOB_ID,",
-						"          DI_LOAD_DT = Load_Dt",
+						"     format: 'table') ~> sourceSFstage",
+						"source(output(",
+						"          CUSTOMER_SK as decimal(38,0),",
+						"          CUSTOMER_ID as decimal(38,0),",
+						"          CUSTOMER_NAME as string,",
+						"          DI_CREATEDDT as timestamp,",
+						"          PID as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> sourceDim",
+						"source(output(",
+						"          INVOICEID as decimal(38,0),",
+						"          CUSTOMERID as decimal(38,0),",
+						"          INVOICEDATE as date,",
+						"          TOTAL_PRODUCT_CNT as decimal(38,0),",
+						"          TOTAL as double,",
+						"          RETRY_FLAG as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> sourceParked",
+						"source(output(",
+						"          MAXINVOICE_SK as decimal(38,0)",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     query: 'SELECT NVL(MAX(INVOICE_SK),0) AS MaxINVOICE_sk FROM FCT_INVOICE',",
+						"     format: 'query') ~> sourceMaxFactSK",
+						"derivedColumn, filterPending union(byName: true)~> union",
+						"sourceSFstage derive(RETRY_FLAG = \"NEW\") ~> derivedColumn",
+						"union select(mapColumn(",
+						"          INVOICEID,",
+						"          CUSTOMERID,",
+						"          INVOICEDATE,",
+						"          TOTAL_PRODUCT_CNT,",
+						"          TOTAL,",
+						"          RETRY_FLAG",
 						"     ),",
 						"     skipDuplicateMapInputs: false,",
-						"     skipDuplicateMapOutputs: false) ~> selectColumns",
-						"selectColumns sink(allowSchemaDrift: true,",
+						"     skipDuplicateMapOutputs: false) ~> selectRequiredColumns",
+						"sourceParked filter(not(isNull(RETRY_FLAG))&& RETRY_FLAG == 'PENDING') ~> filterPending",
+						"selectRequiredColumns, sourceDim join(CUSTOMERID == CUSTOMER_ID,",
+						"     joinType:'left',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> joinDim",
+						"joinDim split(not(isNull(CUSTOMER_ID)),",
+						"     disjoint: false) ~> splitValid@(Valid, Invalid)",
+						"splitValid@Valid, sourceMaxFactSK join(1==1,",
+						"     joinType:'cross',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> joinMaxSK",
+						"surrogateKey derive(INVOICE_SK = MAXINVOICE_SK + Row_number,",
+						"          DI_CREATEDDT = currentTimestamp(),",
+						"          PID = $PID) ~> derivedColumns",
+						"joinMaxSK keyGenerate(output(Row_number as long),",
+						"     startAt: 1L,",
+						"     stepValue: 1L) ~> surrogateKey",
+						"splitValid@Invalid, sourceParked exists(splitValid@Invalid@INVOICEID == sourceParked@INVOICEID",
+						"     && splitValid@Invalid@CUSTOMERID == sourceParked@CUSTOMERID,",
+						"     negate:true,",
+						"     broadcast: 'auto')~> exists",
+						"exists derive(RETRY_FLAG = 'PENDING') ~> Pending",
+						"derivedColumns sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     deletable:false,",
 						"     insertable:true,",
@@ -943,22 +1248,36 @@
 						"     format: 'table',",
 						"     stageInsert: true,",
 						"     mapColumn(",
-						"          LICENSE_NUMBER,",
-						"          ANIMAL_NAME,",
-						"          SPECIES,",
-						"          PRIMARY_BREED,",
-						"          SECONDARY_BREED,",
-						"          ZIP_CODE,",
-						"          LICENSE_ISSUE_DATE,",
-						"          DI_JOB_ID,",
-						"          DI_LOAD_DT",
-						"     )) ~> sinkSnowflake"
+						"          INVOICE_ID = INVOICEID,",
+						"          CUSTOMER_ID = CUSTOMERID,",
+						"          INVOICE_DT = INVOICEDATE,",
+						"          TOTAL_PRODUCT_CNT,",
+						"          TOTAL_PRODUCT_COST = TOTAL,",
+						"          DI_CREATEDDT,",
+						"          PID,",
+						"          INVOICE_SK",
+						"     )) ~> sinkSF",
+						"Pending sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     stageInsert: true,",
+						"     mapColumn(",
+						"          INVOICEID,",
+						"          CUSTOMERID,",
+						"          INVOICEDATE,",
+						"          TOTAL_PRODUCT_CNT,",
+						"          TOTAL,",
+						"          RETRY_FLAG",
+						"     )) ~> sinkParked"
 					]
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DelimitedText1')]",
-				"[concat(variables('factoryId'), '/datasets/SnowflakeTable1')]"
+				"[concat(variables('factoryId'), '/datasets/Snowflake_DS2')]"
 			]
 		},
 		{
@@ -1158,282 +1477,6 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/SnowflakeTable1')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/PL_NYPD_Stage')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "tsv_to_Snowflake",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "NYPDCleansing",
-								"type": "DataFlowReference",
-								"parameters": {
-									"JobID": {
-										"value": "'@{pipeline().RunId}'",
-										"type": "Expression"
-									}
-								},
-								"datasetParameters": {
-									"SourceBronze": {
-										"FileName": "NYPD_Arrest_Data__Year_to_Date__20250213.tsv"
-									},
-									"SnowflakeSink": {}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/dataflows/NYPDCleansing')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/PL_Seattle_Pet_License')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "StageDataFlow",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "SeattlePetCleaning",
-								"type": "DataFlowReference",
-								"parameters": {
-									"JobID": {
-										"value": "'@{pipeline().RunId}'",
-										"type": "Expression"
-									}
-								},
-								"datasetParameters": {
-									"source1": {},
-									"sinkSnowflake": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "PET_LICENSE_STAGE"
-									}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					},
-					{
-						"name": "LoadBreedDIM",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [
-							{
-								"activity": "StageDataFlow",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "BreedDimLoading",
-								"type": "DataFlowReference",
-								"parameters": {
-									"JobID": {
-										"value": "'@{pipeline().RunId}'",
-										"type": "Expression"
-									}
-								},
-								"datasetParameters": {
-									"sourceStage": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "PET_LICENSE_STAGE"
-									},
-									"BreedDimMaxID": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "BREED_DIM"
-									},
-									"sourceBreedDIM": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "BREED_DIM"
-									},
-									"sinkSnowflake": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "BREED_DIM"
-									}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					},
-					{
-						"name": "LoadLocationDIM",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [
-							{
-								"activity": "LoadBreedDIM",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "LocationDimLoading",
-								"type": "DataFlowReference",
-								"parameters": {
-									"Job_ID": {
-										"value": "'@{pipeline().RunId}'",
-										"type": "Expression"
-									}
-								},
-								"datasetParameters": {
-									"sourceBronze": {},
-									"sinkLocDIM": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "LOCATION_DIM"
-									}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					},
-					{
-						"name": "FactLoading",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [
-							{
-								"activity": "LoadLocationDIM",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "SeattleFactLoading",
-								"type": "DataFlowReference",
-								"parameters": {
-									"JobID": {
-										"value": "'@{pipeline().RunId}'",
-										"type": "Expression"
-									}
-								},
-								"datasetParameters": {
-									"sourceStage": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "PET_LICENSE_STAGE"
-									},
-									"sourceBreedDim": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "BREED_DIM"
-									},
-									"sourceLocationDim": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "LOCATION_DIM"
-									},
-									"sourceDateDim": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "DATE_DIM"
-									},
-									"sourceFactMaxID": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "PET_LICENSES_DAILY_CNT_FCT"
-									},
-									"sink1": {
-										"SchemaName": "MYSCHEMA",
-										"TableName": "PET_LICENSES_DAILY_CNT_FCT"
-									}
-								},
-								"linkedServiceParameters": {}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/dataflows/SeattlePetCleaning')]",
-				"[concat(variables('factoryId'), '/dataflows/BreedDimLoading')]",
-				"[concat(variables('factoryId'), '/dataflows/LocationDimLoading')]",
-				"[concat(variables('factoryId'), '/dataflows/SeattleFactLoading')]"
 			]
 		}
 	]

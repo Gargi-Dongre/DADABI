@@ -11,6 +11,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'password' of 'Snowflake_LS'"
 		},
+		"Snowflake_LS_2_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'Snowflake_LS_2'"
+		},
 		"AzureBlobStorage1_LS_sasUri": {
 			"type": "secureString",
 			"metadata": "Secure string for 'sasUri' of 'AzureBlobStorage1_LS'"
@@ -34,6 +38,14 @@
 		"Snowflake_LS_properties_typeProperties_role": {
 			"type": "string",
 			"defaultValue": "DevRole"
+		},
+		"Snowflake_LS_2_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "MySnowflakeDB"
+		},
+		"Snowflake_LS_2_properties_typeProperties_role": {
+			"type": "string",
+			"defaultValue": "DEV_ROLE"
 		},
 		"containerUri": {
 			"type": "string",
@@ -65,6 +77,9 @@
 					"Snowflake_LS_password": {
 						"value": "[parameters('Snowflake_LS_password')]"
 					},
+					"Snowflake_LS_2_password": {
+						"value": "[parameters('Snowflake_LS_2_password')]"
+					},
 					"AzureBlobStorage1_LS_sasUri": {
 						"value": "[parameters('AzureBlobStorage1_LS_sasUri')]"
 					},
@@ -82,10 +97,36 @@
 					},
 					"Snowflake_LS_properties_typeProperties_role": {
 						"value": "[parameters('Snowflake_LS_properties_typeProperties_role')]"
+					},
+					"Snowflake_LS_2_properties_typeProperties_database": {
+						"value": "[parameters('Snowflake_LS_2_properties_typeProperties_database')]"
+					},
+					"Snowflake_LS_2_properties_typeProperties_role": {
+						"value": "[parameters('Snowflake_LS_2_properties_typeProperties_role')]"
 					}
 				}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "damg7370adfgargi_ArmTemplate_1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_1.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'damg7370adfgargi_ArmTemplate_0')]"
+			]
 		}
 	]
 }

@@ -1,0 +1,538 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "damg7370adfgargi"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SeattlePetCleaning')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DelimitedText1",
+								"type": "DatasetReference"
+							},
+							"name": "source1"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "SnowflakeTable1",
+								"type": "DatasetReference"
+							},
+							"name": "sinkSnowflake"
+						}
+					],
+					"transformations": [
+						{
+							"name": "derivedColumn1"
+						},
+						{
+							"name": "selectColumns"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     JobID as string (\"10\")",
+						"}",
+						"source(output(",
+						"          License_Issue_Date as string,",
+						"          License_Number as string,",
+						"          Animals_Name as string,",
+						"          Species as string,",
+						"          Primary_Breed as string,",
+						"          Secondary_Breed as string,",
+						"          ZIP_Code as integer",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> source1",
+						"source1 derive(LIC_ISSUE_DATE = toDate(License_Issue_Date, 'MMMM dd yyyy'),",
+						"          Secondary_Breed = iifNull(Secondary_Breed,'Unknown'),",
+						"          Animals_Name = translate(Animals_Name, '() []', ''),",
+						"          License_Number = toInteger(translate(License_Number, 'S', '')),",
+						"          DI_JOB_ID = $JobID,",
+						"          Load_Dt = currentDate()) ~> derivedColumn1",
+						"derivedColumn1 select(mapColumn(",
+						"          LICENSE_NUMBER = License_Number,",
+						"          ANIMAL_NAME = Animals_Name,",
+						"          SPECIES = Species,",
+						"          PRIMARY_BREED = Primary_Breed,",
+						"          SECONDARY_BREED = Secondary_Breed,",
+						"          ZIP_CODE = ZIP_Code,",
+						"          LICENSE_ISSUE_DATE = LIC_ISSUE_DATE,",
+						"          DI_JOB_ID,",
+						"          DI_LOAD_DT = Load_Dt",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> selectColumns",
+						"selectColumns sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     stageInsert: true,",
+						"     mapColumn(",
+						"          LICENSE_NUMBER,",
+						"          ANIMAL_NAME,",
+						"          SPECIES,",
+						"          PRIMARY_BREED,",
+						"          SECONDARY_BREED,",
+						"          ZIP_CODE,",
+						"          LICENSE_ISSUE_DATE,",
+						"          DI_JOB_ID,",
+						"          DI_LOAD_DT",
+						"     )) ~> sinkSnowflake"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_CustomerInvoiceLoad')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DimLoad",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "DF_CustDimLoad",
+								"type": "DataFlowReference",
+								"parameters": {
+									"PID": {
+										"value": "'@{substring(pipeline().RunId,0,10)}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"sourceSFstage": {
+										"TableName": "CUSTOMER_DATA_PART2_STAGE",
+										"SchemaName": "MYSCHEMA"
+									},
+									"CustDimMAXID": {
+										"TableName": "DIM_CUSTOMER",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sourceDimCust": {
+										"TableName": "DIM_CUSTOMER",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sinkSF": {
+										"TableName": "DIM_CUSTOMER",
+										"SchemaName": "MYSCHEMA"
+									}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "FactLoad",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "DimLoad",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "SalesFactLoad",
+								"type": "DataFlowReference",
+								"parameters": {
+									"PID": {
+										"value": "'@{substring(pipeline().RunId,0,10)}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"sourceSFstage": {
+										"TableName": "SALES_DATA_STAGE",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sourceDim": {
+										"TableName": "DIM_CUSTOMER",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sourceParked": {
+										"TableName": "SALES_DATA_PARKED",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sourceMaxFactSK": {
+										"TableName": "FCT_INVOICE",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sinkSF": {
+										"TableName": "FCT_INVOICE",
+										"SchemaName": "MYSCHEMA"
+									},
+									"sinkParked": {
+										"TableName": "SALES_DATA_PARKED",
+										"SchemaName": "MYSCHEMA"
+									}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "ChangeToCompleted",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "FactLoad",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "Snowflake_LS_2",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "UPDATE SALES_DATA_PARKED AS fp\nSET RETRY_FLAG = 'COMPLETED'\nFROM (\n    SELECT invoiceid, customerid, MAX(DI_CREATEDDT) AS max_createddt\n    FROM fact_invoice\n    GROUP BY invoiceid, customerid\n) f\nWHERE fp.invoiceid = f.invoiceid\nAND fp.customerid = f.customerid\nAND fp.retry_flag = 'PENDING'\nAND f.max_createddt <= (SELECT MAX(DI_CREATEDDT) FROM fact_invoice);\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_NYPD_Stage')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "tsv_to_Snowflake",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "NYPDCleansing",
+								"type": "DataFlowReference",
+								"parameters": {
+									"JobID": {
+										"value": "'@{pipeline().RunId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"SourceBronze": {
+										"FileName": "NYPD_Arrest_Data__Year_to_Date__20250213.tsv"
+									},
+									"SnowflakeSink": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Seattle_Pet_License')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "StageDataFlow",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "SeattlePetCleaning",
+								"type": "DataFlowReference",
+								"parameters": {
+									"JobID": {
+										"value": "'@{pipeline().RunId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"source1": {},
+									"sinkSnowflake": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "PET_LICENSE_STAGE"
+									}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "LoadBreedDIM",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "StageDataFlow",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "BreedDimLoading",
+								"type": "DataFlowReference",
+								"parameters": {
+									"JobID": {
+										"value": "'@{pipeline().RunId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"sourceStage": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "PET_LICENSE_STAGE"
+									},
+									"BreedDimMaxID": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "BREED_DIM"
+									},
+									"sourceBreedDIM": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "BREED_DIM"
+									},
+									"sinkSnowflake": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "BREED_DIM"
+									}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "LoadLocationDIM",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "LoadBreedDIM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "LocationDimLoading",
+								"type": "DataFlowReference",
+								"parameters": {
+									"Job_ID": {
+										"value": "'@{pipeline().RunId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"sourceBronze": {},
+									"sinkLocDIM": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "LOCATION_DIM"
+									}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "FactLoading",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "LoadLocationDIM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "SeattleFactLoading",
+								"type": "DataFlowReference",
+								"parameters": {
+									"JobID": {
+										"value": "'@{pipeline().RunId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"sourceStage": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "PET_LICENSE_STAGE"
+									},
+									"sourceBreedDim": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "BREED_DIM"
+									},
+									"sourceLocationDim": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "LOCATION_DIM"
+									},
+									"sourceDateDim": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "DATE_DIM"
+									},
+									"sourceFactMaxID": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "PET_LICENSES_DAILY_CNT_FCT"
+									},
+									"sink1": {
+										"SchemaName": "MYSCHEMA",
+										"TableName": "PET_LICENSES_DAILY_CNT_FCT"
+									}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/SeattlePetCleaning')]"
+			]
+		}
+	]
+}
